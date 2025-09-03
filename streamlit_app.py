@@ -47,7 +47,6 @@ with col1:
     ax1.imshow(image, cmap='gray')
     ax1.axis('off')
     st.pyplot(fig1)
-    st.markdown("<div style='height: 50px;'></div>", unsafe_allow_html=True)  # Add padding
 
 with col2:
     st.subheader("Morphologically Closed Image")
