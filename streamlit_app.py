@@ -1,56 +1,56 @@
-import os
-os.environ['OPENCV_AV_LOG_LEVEL'] = 'essential'
 import streamlit as st
 import numpy as np
 import cv2
 from skimage.morphology import closing, disk
-import matplotlib.pyplot as plt
+from PIL import Image
 
-def apply_morphological_closing(image, selem_size):
-    """Applies morphological closing to an image with a specified selem size."""
-    selem = disk(selem_size)
+st.set_page_config(page_title="Morphological Closing in Medical Imaging", layout="wide")
+
+st.title("Microskill 3.2: Applying Morphological Operations in Medical Imaging")
+
+st.warning("⚠️ Do not upload sensitive or personal data. Images are processed locally in this demo app.")
+
+# Function for morphological closing
+def apply_morphological_closing(image, radius=5):
+    selem = disk(radius)
     closed_image = closing(image, selem)
     return closed_image
 
-# --- Initialize session state ---
-if 'image' not in st.session_state:
-    st.session_state.image = cv2.imread('./data/breast_US.png', 0)
+# Sidebar controls
+st.sidebar.header("Image Selection")
+use_uploaded = st.sidebar.checkbox("Upload your own image")
 
-# --- Sidebar for Image Selection and Selem Size ---
-st.sidebar.header("Settings")
-
-# Image selection
-image_option = st.sidebar.radio("Select Image:", ("Default", "Upload"))
-
-if image_option == "Upload":
-    uploaded_file = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
-    if uploaded_file is not None:
-        st.session_state.image = cv2.imread(uploaded_file, 0)  # Load as grayscale
+uploaded_img = None
+if use_uploaded:
+    uploaded_img = st.sidebar.file_uploader("Upload an Ultrasound Image", type=["jpg", "jpeg", "png"])
 else:
-    st.session_state.image = cv2.imread('./data/breast_US.png', 0)
+    # ✅ Correct sample path
+    sample_path = "data/breast_US.png"
 
-# Selem size slider
-selem_size = st.sidebar.slider("Selem Size", 1.0, 15.0, 5.0, 1.0)
+# Structuring element radius
+radius = st.sidebar.slider("Structuring Element Radius", 1, 15, 5, step=1,
+                           help="Controls the size of the disk used for morphological closing.")
 
-# --- Load Image ---
-image = st.session_state.image
+# Load image
+if use_uploaded and uploaded_img is not None:
+    img = np.array(Image.open(uploaded_img).convert("L"))  # grayscale
+elif not use_uploaded:
+    img = cv2.imread(sample_path, cv2.IMREAD_GRAYSCALE)
+else:
+    img = None
 
-# --- Apply Morphological Closing ---
-closed_img = apply_morphological_closing(image, selem_size)
+# Process and display
+if img is not None:
+    closed_img = apply_morphological_closing(img, radius=radius)
 
-# --- Display Images (Aligned) ---
-col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
+    col1.image(img, caption="Original Ultrasound", use_container_width=True, clamp=True)
+    col2.image(closed_img, caption="Morphologically Closed", use_container_width=True, clamp=True)
 
-with col1:
-    st.subheader("Original Image")
-    fig1, ax1 = plt.subplots()
-    ax1.imshow(image, cmap='gray')
-    ax1.axis('off')
-    st.pyplot(fig1)
-
-with col2:
-    st.subheader("Morphologically Closed Image")
-    fig2, ax2 = plt.subplots()
-    ax2.imshow(closed_img, cmap='gray')
-    ax2.axis('off')
-    st.pyplot(fig2)
+    st.markdown("""
+    ### Interpretation
+    - **Benefit:** Morphological closing can smooth small holes, reduce speckle noise, and make structures (e.g., tumors, lesions) more continuous.
+    - **Drawback:** It may also remove fine details that are diagnostically important, potentially hiding microcalcifications or subtle boundaries.
+    """)
+else:
+    st.info("Please upload an image or use the provided sample.")
